@@ -1,0 +1,145 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1><i class="fas fa-tasks"></i> Pending Requests</h1>
+    <a href="{% url 'dashboard' %}" class="btn-action btn-primary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+</div>
+
+<div class="requests-grid">
+    <!-- Leave Requests -->
+    <div class="request-section">
+        <h3><i class="fas fa-umbrella-beach"></i> Leave Applications</h3>
+        <div class="roster-container">
+            <table class="roster-table">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Dates</th>
+                        <th>Type</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for leave in leaves %}
+                    <tr>
+                        <td><strong>{{ leave.employee.name }}</strong></td>
+                        <td>{{ leave.start_date }} to {{ leave.end_date }}</td>
+                        <td><strong>{{ leave.leave_type }}</strong></td>
+                        <td>{{ leave.reason|default:"-" }}</td>
+                        <td><span class="status-badge status-{{ leave.status|lower }}">{{ leave.status }}</span></td>
+                        <td>
+                            {% if leave.status == 'Pending' %}
+                                <a href="{% url 'manage_leave' leave.id 'approve' %}" class="btn-action btn-primary btn-sm">Approve</a>
+                                <a href="{% url 'manage_leave' leave.id 'reject' %}" class="btn-action btn-secondary btn-sm">Reject</a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5">No leave applications found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Swap Requests -->
+    <div class="request-section" style="margin-top: 2rem;">
+        <h3><i class="fas fa-exchange-alt"></i> Shift Swap Requests</h3>
+        <div class="roster-container">
+            <table class="roster-table">
+                <thead>
+                    <tr>
+                        <th>From Agent</th>
+                        <th>To Agent</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for swap in swaps %}
+                    <tr>
+                        <td><strong>{{ swap.from_employee.name }}</strong></td>
+                        <td><strong>{{ swap.to_employee.name }}</strong></td>
+                        <td>{{ swap.date }}</td>
+                        <td><span class="status-badge status-{{ swap.status|lower }}">{{ swap.status }}</span></td>
+                        <td>
+                            {% if swap.status == 'Pending' %}
+                                <a href="{% url 'manage_swap' swap.id 'approve' %}" class="btn-action btn-primary btn-sm">Approve</a>
+                                <a href="{% url 'manage_swap' swap.id 'reject' %}" class="btn-action btn-secondary btn-sm">Reject</a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5">No swap requests found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .request-section {
+        background: var(--white);
+        padding: 2rem;
+        border-radius: 16px;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-color);
+        margin-bottom: 2.5rem;
+    }
+    .request-section h3 {
+        margin-bottom: 1.5rem;
+        color: var(--primary-dark);
+        font-family: 'Outfit', sans-serif;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 1.2rem;
+    }
+    .request-section h3 i {
+        color: var(--primary-blue);
+    }
+    .status-badge {
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: inline-block;
+    }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-approved, .status-accepted { background: #dcfce7; color: #166534; }
+    .status-rejected { background: #fee2e2; color: #991b1b; }
+    .btn-sm { padding: 8px 16px; font-size: 0.75rem; border-radius: 8px; }
+    
+    .request-section .roster-container {
+        padding: 0;
+        box-shadow: none;
+        border: none;
+        overflow: visible; /* Prevent unnecessary scrollbars on requests page */
+    }
+
+    .request-section .roster-table td, 
+    .request-section .roster-table th {
+        padding: 1rem;
+        text-align: left;
+    }
+
+    /* Disable sticky column for requests page as it's not needed for short tables */
+    .request-section .roster-table .emp-info {
+        position: static;
+        box-shadow: none;
+        border-right: 1px solid var(--border-color);
+    }
+</style>
+{% endblock %}

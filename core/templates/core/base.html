@@ -1,0 +1,90 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roster Management System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'core/css/styles.css' %}?v=1.2">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="fas fa-calendar-alt"></i> ROSTER<span>PRO</span>
+            </div>
+            <div class="nav-links">
+                {% if user.is_authenticated %}
+                    {% if user.employee_profile.role_type == 'WFM' or user.employee_profile.role_type == 'Supervisor' %}
+                        <a href="{% url 'requests' %}" class="btn-logout" style="margin-right: 1rem; border-color: var(--text-grey);"><i class="fas fa-tasks"></i> Requests</a>
+                    {% endif %}
+                    <span class="user-info"><i class="fas fa-user-circle"></i> {{ employee.name|default:user.employee_profile.name|default:"Guest Agent" }} ({{ employee.role_type|default:user.employee_profile.role_type|default:"Agent" }})</span>
+                    <a href="{% url 'logout' %}" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <main class="content">
+        {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2026 RosterPro Management System. All Rights Reserved.</p>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    {% block extra_js %}{% endblock %}
+    <div class="loader-overlay" id="global-loader">
+        <div style="text-align: center;">
+            <div class="spinner"></div>
+            <div id="loader-text" style="margin-top: 1.5rem; color: var(--primary-dark); font-weight: 700; font-family: 'Outfit', sans-serif; font-size: 1.1rem;">Working...</div>
+        </div>
+    </div>
+
+    <script>
+        // Global Loader Logic
+        function showLoader(text = "Working...") {
+            document.getElementById('loader-text').innerText = text;
+            document.getElementById('global-loader').style.display = 'flex';
+        }
+
+        function hideLoader() {
+            document.getElementById('global-loader').style.display = 'none';
+        }
+
+        // Attach to all forms
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function() {
+                // Only show if the form is valid (if using browser validation)
+                if (this.checkValidity()) {
+                    const submitBtn = this.querySelector('button[type="submit"]');
+                    if (submitBtn) {
+                        submitBtn.classList.add('btn-loading');
+                    }
+                    showLoader();
+                }
+            });
+        });
+
+        // Handle page visibility for back/forward cache
+        window.addEventListener('pageshow', function(event) {
+            hideLoader();
+            document.querySelectorAll('.btn-loading').forEach(btn => btn.classList.remove('btn-loading'));
+        });
+    </script>
+</body>
+</html>

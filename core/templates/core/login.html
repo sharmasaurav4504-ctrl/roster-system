@@ -1,0 +1,56 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="login-wrapper">
+    <div class="login-card">
+        <h2><i class="fas fa-lock"></i> Secure Login</h2>
+        <form method="POST">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="role">Select Role</label>
+                <select name="role" id="role" class="form-control" onchange="togglePassword()">
+                    <option value="WFM">WFM</option>
+                    <option value="Supervisor">Supervisor</option>
+                    <option value="Agent">Agent</option>
+                </select>
+            </div>
+
+            <!-- <div class="form-group" id="emp-id-group" style="display:none;">
+                <label for="emp_id">Employee ID</label>
+                <input type="text" name="emp_id" id="emp_id" class="form-control" placeholder="e.g. AGT001">
+            </div> -->
+
+            <div class="form-group" id="password-group">
+                <label for="password">Password</label>
+                <input type="password" name="password" id="password" class="form-control" placeholder="••••••••">
+            </div>
+
+            <button type="submit" class="btn-login">Login <i class="fas fa-arrow-right"></i></button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function togglePassword() {
+        const selectedRole = document.getElementById('role').value;
+        const passGroup = document.getElementById('password-group');
+        const passInput = document.getElementById('password');
+
+        if (selectedRole === 'Agent') {
+            passGroup.style.display = 'none';
+            passInput.removeAttribute('required');
+            document.getElementById('emp-id-group').style.display = 'block';
+            document.getElementById('emp_id').removeAttribute('required');
+        } else {
+            passGroup.style.display = 'block';
+            passInput.setAttribute('required', 'required');
+            document.getElementById('emp-id-group').style.display = 'none';
+            document.getElementById('emp_id').removeAttribute('required');
+        }
+    }
+
+    // Initialize on load
+    window.onload = togglePassword;
+</script>
+{% endblock %}

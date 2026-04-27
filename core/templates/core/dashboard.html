@@ -1,0 +1,306 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% load roster_extras %}
+
+
+{% block content %}
+<div class="dashboard-header">
+    <h1><i class="fas fa-th-list"></i> Shift Roster</h1>
+    
+    <div class="actions">
+        {% if employee.role_type == 'WFM' %}
+            <a href="{% static 'core/sample_roster.csv' %}" class="btn-action btn-secondary" download>
+                <i class="fas fa-file-csv"></i> Sample Format
+            </a>
+            <button class="btn-action btn-secondary" onclick="document.getElementById('csv_file').click()">
+                <i class="fas fa-upload"></i> Import CSV
+            </button>
+            <form id="upload-form" method="POST" action="{% url 'upload_roster' %}" enctype="multipart/form-data" style="display:none">
+                {% csrf_token %}
+                <input type="file" name="csv_file" id="csv_file" onchange="showLoader('Uploading... Please wait.'); this.form.submit();">
+            </form>
+        {% endif %}
+        
+        {% if employee.role_type == 'WFM' or employee.role_type == 'Supervisor' %}
+            <a href="{% url 'export_roster' %}" class="btn-action btn-primary">
+                <i class="fas fa-download"></i> Export Roster
+            </a>
+        {% endif %}
+        
+        {% if employee.role_type == 'Agent' %}
+            <button class="btn-action btn-primary" onclick="showLeaveModal()">
+                <i class="fas fa-paper-plane"></i> Apply Leave
+            </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="filter-bar">
+    <form method="GET" action="{% url 'dashboard' %}" class="filter-form">
+        <div class="filter-group">
+            <label>Role</label>
+            <select name="role" class="form-control">
+                <option value="">All Roles</option>
+                {% for r in roles %}
+                    <option value="{{ r }}" {% if r == f_role %}selected{% endif %}>{{ r }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>PMS</label>
+            <select name="pms" class="form-control">
+                <option value="">All PMS</option>
+                {% for p in pms_list %}
+                    <option value="{{ p }}" {% if p == f_pms %}selected{% endif %}>{{ p }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Manager</label>
+            <select name="manager" class="form-control">
+                <option value="">All Managers</option>
+                {% for m in managers %}
+                    <option value="{{ m }}" {% if m == f_manager %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>View Range</label>
+            <select name="view" class="form-control">
+                <option value="all" {% if request.GET.view == 'all' %}selected{% endif %}>Full Roster</option>
+                <option value="week" {% if request.GET.view == 'week' %}selected{% endif %}>Weekly View</option>
+                <option value="month" {% if request.GET.view == 'month' %}selected{% endif %}>Monthly View</option>
+            </select>
+        </div>
+        <div class="filter-actions" style="display: flex; align-items: flex-end; gap: 10px;">
+            <button type="submit" class="btn-action btn-primary"><i class="fas fa-filter"></i> Apply</button>
+            <a href="{% url 'dashboard' %}" class="btn-action btn-secondary"><i class="fas fa-undo"></i> Reset</a>
+        </div>
+    </form>
+</div>
+
+{% if f_view != 'all' %}
+<div class="view-navigation" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; background: #f8fafc; padding: 10px 20px; border-radius: 12px; border: 1px solid var(--border-color);">
+    <div>
+        <span style="font-weight: 600; color: var(--text-muted);">
+            Showing: {{ view_label }}
+        </span>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        {% if f_page > 0 %}
+        <a href="?role={{ f_role|default_if_none:'' }}&pms={{ f_pms|default_if_none:'' }}&manager={{ f_manager|default_if_none:'' }}&view={{ f_view }}&page={{ f_page|add:-1 }}" class="btn-action btn-secondary btn-sm">
+            <i class="fas fa-chevron-left"></i> Previous
+        </a>
+        {% endif %}
+        
+        {% if has_next %}
+        <a href="?role={{ f_role|default_if_none:'' }}&pms={{ f_pms|default_if_none:'' }}&manager={{ f_manager|default_if_none:'' }}&view={{ f_view }}&page={{ f_page|add:1 }}" class="btn-action btn-primary btn-sm">
+            Next <i class="fas fa-chevron-right"></i>
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Double Scroll Top Bar -->
+<div class="double-scroll-wrapper" id="top-scroll-wrapper">
+    <div class="double-scroll-content" id="top-scroll-content"></div>
+</div>
+
+<div class="roster-container" id="bottom-scroll-wrapper">
+    <table class="roster-table">
+        <thead>
+            <tr>
+                <th class="emp-info">Employee Details</th>
+                {% for date in dates %}
+                    <th>{{ date|date:"D" }}<br>{{ date|date:"d M" }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in roster_data %}
+                <tr {% if item.emp == employee %}class="current-user-row" title="Your Schedule"{% endif %}>
+                    <td class="emp-info">
+                        <strong style="color: #1e3a8a; display: block;">{{ item.emp.name }}</strong>
+                        <small style="color: #64748b;">{{ item.emp.emp_id }} | {{ item.emp.role_type }}</small><br>
+                        <small style="color: #94a3b8;">PMS: {{ item.emp.pms|default:"-" }} | Mgr: {{ item.emp.manager|default:"-" }}</small>
+                    </td>
+                    {% for date in dates %}
+                        {% with shift=item.shifts|get_item:date %}
+                            <td class="shift-cell shift-{{ shift|replace_dash }}" 
+                                data-emp="{{ item.emp.id }}" 
+                                data-date="{{ date|date:'Y-m-d' }}"
+                                data-current="{{ shift }}"
+                                {% if employee.role_type == 'WFM' or employee.role_type == 'Supervisor' %}
+                                onclick="openEditModal(this)"
+                                style="cursor: pointer;"
+                                {% endif %}>
+                                <span class="shift-text">{{ shift|default:"-" }}</span>
+                            </td>
+                        {% endwith %}
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Leave Modal -->
+<div id="leaveModal" class="modal-overlay">
+    <div class="modal-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h3>Apply for Leave</h3>
+            <button type="button" onclick="hideLeaveModal()" style="background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 1.2rem;"><i class="fas fa-times"></i></button>
+        </div>
+        <form method="POST" action="{% url 'apply_leave' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Employee ID</label>
+                <input type="text" name="emp_id" class="form-control" required placeholder="Enter your ID (e.g. AGT001)">
+            </div>
+            <div class="form-group">
+                <label>Select Leave Type</label>
+                <select name="leave_type" class="form-control" required>
+                    <option value="CL">Casual Leave (CL)</option>
+                    <option value="UL">Unplanned Leave (UL)</option>
+                    <option value="EL">Earned Leave (EL)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Start Date</label>
+                <input type="date" name="start_date" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>End Date</label>
+                <input type="date" name="end_date" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>Reason</label>
+                <textarea name="reason" class="form-control" placeholder="Optional reason for leave..."></textarea>
+            </div>
+            <button type="submit" class="btn-login">Submit Application</button>
+            <button type="button" class="btn-action btn-secondary" style="width:100%; margin-top:10px" onclick="hideLeaveModal()">
+                <i class="fas fa-arrow-left"></i> Back to Roster
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Shift Modal -->
+
+<div id="editShiftModal" class="modal-overlay">
+    <div class="modal-content">
+        <h3>Update Shift</h3>
+        <p id="edit-details" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;"></p>
+        <div class="form-group">
+            <label>Select New Shift</label>
+            <select id="new-shift-select" class="form-control">
+                {% for choice in shift_choices %}
+                    <option value="{{ choice }}">{{ choice }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="button" class="btn-login" onclick="saveShiftChange()">Save Change</button>
+        <button type="button" class="btn-action btn-secondary" style="width:100%; margin-top:10px" onclick="hideEditModal()">Cancel</button>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentEditingCell = null;
+
+    function openEditModal(cell) {
+        currentEditingCell = cell;
+        const empName = cell.parentElement.querySelector('strong').innerText;
+        const date = cell.dataset.date;
+        const currentShift = cell.dataset.current;
+        
+        document.getElementById('edit-details').innerText = `Editing shift for ${empName} on ${date}`;
+        document.getElementById('new-shift-select').value = currentShift;
+        document.getElementById('editShiftModal').style.display = 'flex';
+    }
+
+    function hideEditModal() {
+        document.getElementById('editShiftModal').style.display = 'none';
+        currentEditingCell = null;
+    }
+
+    function saveShiftChange() {
+        if (!currentEditingCell) return;
+        
+        const empId = currentEditingCell.dataset.emp;
+        const date = currentEditingCell.dataset.date;
+        const shiftCode = document.getElementById('new-shift-select').value;
+        const saveBtn = event.target;
+
+        saveBtn.classList.add('btn-loading');
+        showLoader();
+
+        $.ajax({
+            url: "{% url 'update_shift' %}",
+            method: "POST",
+            data: {
+                'emp_id': empId,
+                'date': date,
+                'shift_code': shiftCode,
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            success: function(response) {
+                hideLoader();
+                saveBtn.classList.remove('btn-loading');
+                if(response.status === 'success') {
+                    // Update UI
+                    currentEditingCell.querySelector('.shift-text').innerText = shiftCode;
+                    currentEditingCell.className = 'shift-cell shift-' + shiftCode.replace('-', '_');
+                    currentEditingCell.dataset.current = shiftCode;
+                    hideEditModal();
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            },
+            error: function() {
+                hideLoader();
+                saveBtn.classList.remove('btn-loading');
+                alert('Connection error');
+            }
+        });
+    }
+
+    function showLeaveModal() {
+        document.getElementById('leaveModal').style.display = 'flex';
+    }
+
+    function hideLeaveModal() {
+        document.getElementById('leaveModal').style.display = 'none';
+    }
+    // Double Scroll Logic
+    const topWrapper = document.getElementById('top-scroll-wrapper');
+    const topContent = document.getElementById('top-scroll-content');
+    const bottomWrapper = document.getElementById('bottom-scroll-wrapper');
+    const table = bottomWrapper.querySelector('table');
+
+    function syncWidths() {
+        if (table && topContent) {
+            topContent.style.width = table.scrollWidth + 'px';
+        }
+    }
+
+    if (topWrapper && bottomWrapper) {
+        topWrapper.onscroll = function() {
+            bottomWrapper.scrollLeft = topWrapper.scrollLeft;
+        };
+
+        bottomWrapper.onscroll = function() {
+            topWrapper.scrollLeft = bottomWrapper.scrollLeft;
+        };
+    }
+
+    // Initialize sync
+    window.addEventListener('load', syncWidths);
+    window.addEventListener('resize', syncWidths);
+    setTimeout(syncWidths, 1000); // Backup sync
+</script>
+{% endblock %}
