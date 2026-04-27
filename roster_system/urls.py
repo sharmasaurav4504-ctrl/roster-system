@@ -1,19 +1,21 @@
-"""
-URL configuration for roster_system project.
+from django.urls import path
+from . import views
 
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/6.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
+urlpatterns = [
+    path('', views.login_view, name='login'),
+    path('logout/', views.logout_view, name='logout'),
+    path('dashboard/', views.dashboard_view, name='dashboard'),
+    path('upload/', views.upload_roster, name='upload_roster'),
+    path('export/', views.export_roster, name='export_roster'),
+    path('update-shift/', views.update_shift, name='update_shift'),
+    path('apply-leave/', views.apply_leave, name='apply_leave'),
+    path('requests/', views.requests_view, name='requests'),
+    path('manage-leave/<int:leave_id>/<str:action>/', views.manage_leave, name='manage_leave'),
+    path('manage-swap/<int:swap_id>/<str:action>/', views.manage_swap, name='manage_swap'),
+
+    # ✅ TEMPORARY admin creator
+    path('create-admin/', views.create_admin_once),
+]
 from django.contrib import admin
 from django.urls import path, include
 
