@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: roster-system
+    runtime: python3
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput"
+    startCommand: "gunicorn roster_system.wsgi:application --bind 0.0.0.0:$PORT"
+    envVars:
+      - key: DEBUG
+        value: False
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        fromService:
+          type: web
+          name: roster-system
+          property: host
+    databases:
+      - name: roster-db
+        databaseName: roster_db
+        user: roster_user

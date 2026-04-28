@@ -1,0 +1,4 @@
+EMP ID,Name,Role,PMS,Manager,2026-04-01,2026-04-02,2026-04-03,2026-04-04,2026-04-05
+AGT001,Alice Agent,Agent,PMS-03,John Supervisor,E,E,WO,WO,M
+AGT002,Bob Agent,Agent,PMS-03,John Supervisor,M,M,E,E,WO
+SUP001,John Supervisor,Supervisor,PMS-02,Admin WFM,WO,WO,A,A,A
